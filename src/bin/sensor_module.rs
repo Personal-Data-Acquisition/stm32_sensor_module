@@ -14,7 +14,7 @@ use embassy_stm32::gpio::{Level, Output, Speed};
 use embassy_time::Timer;
 use {defmt_rtt as _, panic_probe as _};
 
-use embassy_time::Duration;
+//use embassy_time::Duration;
 
 #[embassy_executor::main]
 async fn main(_spawner: Spawner) {
@@ -34,14 +34,14 @@ async fn main(_spawner: Spawner) {
     }
 }
 
-
-#[embassy_executor::task]
-async fn blinker(mut led: Output<'static, P0_13>, interval: Duration) {
-    loop {
-        led.set_high();
-        Timer::after(interval).await;
-        led.set_low();
-        Timer::after(interval).await;
-    }
-}
-
+//
+//#[embassy_executor::task]
+//async fn blinker(mut led: Output<'static, P0_13>, interval: Duration) {
+//    loop {
+//        led.set_high();
+//        Timer::after(interval).await;
+//        led.set_low();
+//        Timer::after(interval).await;
+//    }
+//}
+//
