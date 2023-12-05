@@ -1,3 +1,4 @@
+workspace = { members = ["can_module"] }
 [package]
 edition = "2021"
 name = "stm32_sensor_module"
