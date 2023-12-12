@@ -1,9 +1,13 @@
-workspace = { members = ["can_module"] }
 [package]
 edition = "2021"
 name = "stm32_sensor_module"
 version = "0.1.0"
 license = "MIT OR Apache-2.0"
+
+[workspace]
+members = [
+    "sensor_logic"
+]
 
 [dependencies]
 # Change stm32f103c8 to your chip name, if necessary.
