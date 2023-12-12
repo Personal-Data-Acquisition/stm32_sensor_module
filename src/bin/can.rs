@@ -63,7 +63,7 @@ async fn main(spawner: Spawner) {
     let mut data_array:[u8;8] = [0,0,0,0,0,0,0,0];
     loop {
         for idx in  (0..8).rev(){
-            if(data_array[idx]==254){
+            if data_array[idx]==254 {
                 data_array[idx]=0;
             }
             else {
@@ -79,7 +79,7 @@ async fn main(spawner: Spawner) {
         //let envelope = can.read().await.unwrap();
         //println!("Received: {:?}", envelope);
         //info!("Sent");
-        while(!can.is_transmitter_idle()){}
+        while !can.is_transmitter_idle() {}
         //Timer::after_millis(10).await;
     }
 }
