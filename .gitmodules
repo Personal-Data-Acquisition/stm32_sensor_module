@@ -1,0 +1,3 @@
+[submodule "sensor_lib_sn65hvd230"]
+	path = sensor_lib_sn65hvd230
+	url = git@github.com:Personal-Data-Acquisition/sensor_lib_sn65hvd230.git
