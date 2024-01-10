@@ -5,7 +5,7 @@ version = "0.1.0"
 license = "MIT OR Apache-2.0"
 
 [workspace]
-members = []
+members = ["sensor_lib_sn65hvd230", ]
 
 [dependencies]
 # Change stm32f103c8 to your chip name, if necessary.
