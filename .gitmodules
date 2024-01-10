@@ -4,3 +4,6 @@
 [submodule "sensor_lib_max6675"]
 	path = sensor_lib_max6675
 	url = git@github.com:Personal-Data-Acquisition/sensor_lib_max6675.git
+[submodule "sensor_lib_aht20"]
+	path = sensor_lib_aht20
+	url = git@github.com:Personal-Data-Acquisition/sensor_lib_aht20.git
