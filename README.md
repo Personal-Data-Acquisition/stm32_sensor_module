@@ -17,6 +17,13 @@ For example if you want to pull the sub-modules current code:
 git submodule --init <NAMEHERE>
 ```
 
+where as to add a new repo as a sub-module
+
+```sh
+git submodule add git@github.com:Personal-Data-Acquisition/sensor_lib_max6675.git
+```
+
+
 ### Running the tests in the sub-modules
 
 ```sh
