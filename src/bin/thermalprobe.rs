@@ -11,10 +11,18 @@ use embassy_stm32::spi::{Config, Spi};
 use embassy_stm32::time::Hertz;
 use embassy_stm32::dma::NoDma;
 
+use arrform::{arrform, ArrForm};
+
+mod canlib;
+use canlib::*;
+
 
 #[embassy_executor::main]
 async fn main(_spawner: Spawner) {
     let p = embassy_stm32::init(Default::default());
+
+    let can=init_can(p.CAN,p.PA11,p.PA12);
+
     info!("Hello World!");
 
     let mut spi_config = Config::default();
@@ -46,6 +54,9 @@ async fn main(_spawner: Spawner) {
         let temperature_celsius = (temperature_raw >> 3) as f32 * 0.25;
         info!("Raw {=[u8]:x}", buf);
         info!("Temperature: {} °C", temperature_celsius);
-        Timer::after_millis(300).await;
+        let af = arrform!(64, "{:.2}C", temperature_celsius);
+        send_can_message(can,0x40,af.as_bytes()).await;
+        Timer::after_millis(200).await;
+
     }
 }
