@@ -3,19 +3,13 @@
 #![feature(type_alias_impl_trait)]
 
 use defmt::*;
-use defmt::export::slice;
 use embassy_executor::Spawner;
 use embassy_stm32::dma::NoDma;
 use embassy_stm32::i2c::{Error, I2c, Instance};
 use embassy_stm32::time::Hertz;
-use embassy_stm32::{bind_interrupts, i2c, peripherals, Peripherals};
-use embassy_stm32::rcc::low_level::RccPeripheral;
-use embassy_stm32::usart::{BasicInstance, RxDma, Uart};
+use embassy_stm32::{bind_interrupts, i2c, peripherals};
 use embassy_time::Timer;
-use heapless::String;
 use {defmt_rtt as _, panic_probe as _};
-use ublox::*;
-use ublox::{CfgPrtI2cBuilder, I2cPortId, DataBits, Parity, StopBits, InProtoMask, OutProtoMask};
 const ADDRESS: u8 = 0x42;
 const WHOAMI: u8 = 0x0F;
 
@@ -39,7 +33,7 @@ async fn checkGNSS<'d, T: Instance, TXDMA, RXDMA>(i2c: &mut I2c<'d, T, TXDMA, RX
         //use slice to get around not having vectors
         let mut slice: &mut [u8] = &mut arr[0..to_read];
         //read
-        i2c.blocking_read(0x42, &mut slice);
+        i2c.blocking_read(0x42, &mut slice).unwrap();
         //print as string
         let mut txt=['\0';256];
         let txt = core::str::from_utf8(slice).unwrap();
@@ -79,12 +73,6 @@ async fn main(_spawner: Spawner) {
             return;
         },
     }
-
-
-    //prepare parser with fixed buffer
-    let mut buf = [0; 256];
-    let buf = ublox::FixedLinearBuffer::new(&mut buf[..]);
-    let mut parser = ublox::Parser::new(buf);
 
     while (true){
         checkGNSS(&mut i2c).await;
