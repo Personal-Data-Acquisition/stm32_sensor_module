@@ -26,6 +26,10 @@ futures = { version = "0.3.17", default-features = false, features = ["async-awa
 heapless = { version = "0.8", default-features = false }
 nb = "1.0.0"
 arrform = "0.1.1"
+
+sensor_lib_aht20 = {git="https://github.com/Personal-Data-Acquisition/sensor_lib_aht20.git", branch = "main"}
+
+
 [profile.dev]
 opt-level = "s"
 
