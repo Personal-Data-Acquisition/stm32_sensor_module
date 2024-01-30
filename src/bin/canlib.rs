@@ -18,13 +18,13 @@ USB_HP_CAN1_TX => TxInterruptHandler<CAN>;
 pub async fn send_can_message(can: &mut Can<'_, CAN>, id: u8, data: &[u8]) {
     let std_id=unwrap!(StandardId::new(id as _));
     for chunk in data.chunks(8) {
-        let mut arr:[u8;8]=[0x19u8;8];
+        let mut arr:[u8;8]=[0u8;8];
         for i in 0..chunk.len() {
             arr[i]=chunk[i];
         }
         let frame = Frame::new_data(std_id, arr);
         can.write(&frame).await;
-        while(!can.is_transmitter_idle()){}
+        while !can.is_transmitter_idle() {}
     }
 }
 pub fn init_can<R: RxPin<CAN>, T: TxPin<CAN>>(can: CAN,rx_pin: R, tx_pin: T) -> &'static mut Can<'static, CAN> {

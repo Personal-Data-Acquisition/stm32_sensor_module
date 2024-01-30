@@ -5,11 +5,16 @@
 use defmt::*;
 use embassy_executor::Spawner;
 use embassy_stm32::dma::NoDma;
-use embassy_stm32::i2c::{Error, I2c, Instance};
+use embassy_stm32::i2c::{Error, I2c};
 use embassy_stm32::time::Hertz;
 use embassy_stm32::{bind_interrupts, i2c, peripherals};
+use embassy_stm32::can::Can;
+use embassy_stm32::peripherals::{CAN, I2C2};
 use embassy_time::Timer;
 use {defmt_rtt as _, panic_probe as _};
+mod canlib;
+use canlib::*;
+
 const ADDRESS: u8 = 0x42;
 const WHOAMI: u8 = 0x0F;
 
@@ -18,14 +23,14 @@ bind_interrupts!(struct Irqs {
     I2C2_ER => i2c::ErrorInterruptHandler<peripherals::I2C2>;
 });
 
-async fn checkGNSS<'d, T: Instance, TXDMA, RXDMA>(i2c: &mut I2c<'d, T, TXDMA, RXDMA>) -> Result<(), Error> {
+async fn check_gnss(i2c: &mut I2c<'_, I2C2>, can: &mut Can<'_, CAN>,) -> Result<(), Error> {
     // 0xFD (MSB) and 0xFE (LSB) are the registers that contain number of bytes available
     // 0xFF contains gps data stream.
     let mut avail=[0u8;2];
-    i2c.blocking_write_read(0x42,&[0xfd],&mut avail);
+    i2c.blocking_write_read(0x42,&[0xfd],&mut avail).unwrap();
     let mut bytes_available = (avail[0] as usize) << 8 | avail[1] as usize;
     info!("Bytes available:{}",bytes_available);
-    while(bytes_available>0){
+    while bytes_available>0 {
         //read in 256 byte chunks
         let to_read = if bytes_available > 256 { 256 } else { bytes_available };
         bytes_available-=to_read;
@@ -35,9 +40,9 @@ async fn checkGNSS<'d, T: Instance, TXDMA, RXDMA>(i2c: &mut I2c<'d, T, TXDMA, RX
         //read
         i2c.blocking_read(0x42, &mut slice).unwrap();
         //print as string
-        let mut txt=['\0';256];
         let txt = core::str::from_utf8(slice).unwrap();
         //let txt = unsafe { core::str::from_utf8_unchecked(slice) };
+        send_can_message(can, 0x50, &slice).await;
         info!("{}",txt);
 
     }
@@ -60,6 +65,9 @@ async fn main(_spawner: Spawner) {
         Hertz(115200),
         Default::default(),
     );
+
+    let mut can=init_can(p.CAN,p.PA11,p.PA12);
+
     //check for connection and exit on errror
     let mut data = [0u8; 1];
     match i2c.blocking_write_read(ADDRESS, &[WHOAMI], &mut data) {
@@ -74,8 +82,8 @@ async fn main(_spawner: Spawner) {
         },
     }
 
-    while (true){
-        checkGNSS(&mut i2c).await;
+    loop{
+        check_gnss(&mut i2c, &mut can).await.unwrap();
         Timer::after_millis(250).await;
     }
 }
