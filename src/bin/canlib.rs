@@ -1,4 +1,5 @@
-
+#![no_std]
+#![no_main]
 
 use defmt::*;
 use embassy_stm32::{bind_interrupts};
@@ -14,7 +15,6 @@ CAN1_SCE => SceInterruptHandler<CAN>;
 USB_HP_CAN1_TX => TxInterruptHandler<CAN>;
 });
 
-//#[embassy_executor::task]
 pub async fn send_can_message(can: &mut Can<'_, CAN>, id: u8, data: &[u8]) {
     let std_id=unwrap!(StandardId::new(id as _));
     for chunk in data.chunks(8) {
@@ -22,17 +22,21 @@ pub async fn send_can_message(can: &mut Can<'_, CAN>, id: u8, data: &[u8]) {
         for i in 0..chunk.len() {
             arr[i]=chunk[i];
         }
+        //let frame = Frame::new_data(std_id, arr);
         let frame = Frame::new_data(std_id, arr);
         can.write(&frame).await;
+        defmt::println!("IDLE");
         while !can.is_transmitter_idle() {}
     }
 }
+
 pub fn init_can<R: RxPin<CAN>, T: TxPin<CAN>>(can: CAN,rx_pin: R, tx_pin: T) -> &'static mut Can<'static, CAN> {
     let can: &'static mut Can<'static, CAN> = static_cell::make_static!(Can::new(can, rx_pin, tx_pin, Irqs));
     can.as_mut()
         .modify_filters()
         .enable_bank(0, Fifo::Fifo0, Mask32::accept_all());
     can.set_bitrate(500_000);
+    //can.set_bitrate(250_000);
     can.as_mut()
         .modify_config()
         //.set_bit_timing(0x001c0000) // http://www.bittiming.can-wiki.info/ this is 500kbps
@@ -41,5 +45,5 @@ pub fn init_can<R: RxPin<CAN>, T: TxPin<CAN>>(can: CAN,rx_pin: R, tx_pin: T) -> 
         .enable();
     return can;
 }
-//just here to appease the ide
-fn main() {}
+
+

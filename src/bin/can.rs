@@ -16,9 +16,18 @@ async fn main(spawner: Spawner) {
 
     let p = embassy_stm32::init(Default::default());
 
-    let mut can=init_can(p.CAN,p.PA11,p.PA12);
+    // Set alternate pin mapping to B8/B9
+    embassy_stm32::pac::AFIO.mapr().modify(|w| w.set_can1_remap(2));
+
+
+
+    let mut can=init_can(p.CAN, p.PB8, p.PB9);
     let interned = defmt::intern!("long string literal taking up little space");
+
+    info!("CAN INTERFACE INIT...");
     loop {
-        send_can_message(&mut can, 0x40, b"Hello world this is a test of the canbus transmission system.").await;
+        send_can_message(&mut can, 0x02, b"0").await;
+        info!("MSG SENT");
+        //send_can_message(&mut can, 0x40, b"Hello world this is a test of the canbus transmission system.").await;
     }
 }
