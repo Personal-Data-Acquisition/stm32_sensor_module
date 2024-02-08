@@ -26,6 +26,7 @@ futures = { version = "0.3.17", default-features = false, features = ["async-awa
 heapless = { version = "0.8", default-features = false }
 nb = "1.0.0"
 arrform = "0.1.1"
+mpu9250 = {version = "0.25.0",features = ["i2c"]}
 [profile.dev]
 opt-level = "s"
 
