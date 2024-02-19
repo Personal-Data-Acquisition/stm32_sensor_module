@@ -15,6 +15,7 @@ use mpu9250::{MargMeasurements, Mpu9250};
 use {defmt_rtt as _, panic_probe as _};
 mod canlib;
 use canlib::*;
+use half::f16;
 
 const ADDRESS: u8 = 0x68;
 const WHOAMI: u8 = 0x0F;
@@ -23,6 +24,22 @@ bind_interrupts!(struct Irqs {
     I2C2_EV => i2c::EventInterruptHandler<peripherals::I2C2>;
     I2C2_ER => i2c::ErrorInterruptHandler<peripherals::I2C2>;
 });
+
+async fn send_reading(can: &mut Can<'_, CAN>, id: u8, label:[char;2], data:[f32;3]){
+    let mut bytes: [u8; 8] = [label[0] as u8,label[1] as u8, 0,0,0,0,0,0]; // Initialize a fixed-size array to hold the bytes
+    let mut index = 2;
+    for &f in data.iter() {
+        // Convert f32 to f16
+        let f16_value = f16::from_f32(f);
+        // Extract the bytes of the f16 value
+        let f16_bytes: [u8; 2] = f16_value.to_bits().to_le_bytes();
+        // Copy the bytes into the existing array
+        bytes[index..index + 2].copy_from_slice(&f16_bytes);
+        // Update the index
+        index += 2;
+    }
+    send_can_message(can, id, &bytes).await;
+}
 
 #[embassy_executor::main]
 async fn main(_spawner: Spawner) {
@@ -40,7 +57,8 @@ async fn main(_spawner: Spawner) {
         Default::default(),
     );
 
-    //let mut can=init_can(p.CAN,p.PA11,p.PA12);
+    embassy_stm32::pac::AFIO.mapr().modify(|w| w.set_can1_remap(2));
+    let mut can=init_can(p.CAN,p.PB8,p.PB9);
 
     //check for connection and exit on errror
     let mut data = [0u8; 1];
@@ -69,7 +87,12 @@ async fn main(_spawner: Spawner) {
                 println!("MAG{:?}", all.mag);
                 println!("GYRO{:?}", all.gyro);
                 println!("TEMP{:?}\n", all.temp);
-                Timer::after_millis(200).await;
+
+                send_reading(can,0x60,['a','c'],all.accel).await;
+                send_reading(can,0x60,['m','g'],all.mag).await;
+                send_reading(can,0x60,['g','y'],all.gyro).await;
+
+                Timer::after_millis(1).await;
 
             }
         }
