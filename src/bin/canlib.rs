@@ -16,17 +16,23 @@ USB_HP_CAN1_TX => TxInterruptHandler<CAN>;
 
 //#[embassy_executor::task]
 pub async fn send_can_message(can: &mut Can<'_, CAN>, id: u8, data: &[u8]) {
-    let std_id=unwrap!(StandardId::new(id as _));
+    let std_id = unwrap!(StandardId::new(id as _));
     for chunk in data.chunks(8) {
-        let mut arr:[u8;8]=[0u8;8];
-        for i in 0..chunk.len() {
-            arr[i]=chunk[i];
-        }
-        let frame = Frame::new_data(std_id, arr);
+        let frame = match chunk.len() {
+            1 => Frame::new_data(std_id, [chunk[0]; 1]),
+            2 => Frame::new_data(std_id, [chunk[0], chunk[1]]),
+            3 => Frame::new_data(std_id, [chunk[0], chunk[1], chunk[2]]),
+            4 => Frame::new_data(std_id, [chunk[0], chunk[1], chunk[2], chunk[3]]),
+            5 => Frame::new_data(std_id, [chunk[0], chunk[1], chunk[2], chunk[3], chunk[4]]),
+            6 => Frame::new_data(std_id, [chunk[0], chunk[1], chunk[2], chunk[3], chunk[4], chunk[5]]),
+            7 => Frame::new_data(std_id, [chunk[0], chunk[1], chunk[2], chunk[3], chunk[4], chunk[5], chunk[6]]),
+            _ => Frame::new_data(std_id, [chunk[0], chunk[1], chunk[2], chunk[3], chunk[4], chunk[5], chunk[6], chunk[7]]),
+        };
         can.write(&frame).await;
         while !can.is_transmitter_idle() {}
     }
 }
+
 pub fn init_can<R: RxPin<CAN>, T: TxPin<CAN>>(can: CAN,rx_pin: R, tx_pin: T) -> &'static mut Can<'static, CAN> {
     let can: &'static mut Can<'static, CAN> = static_cell::make_static!(Can::new(can, rx_pin, tx_pin, Irqs));
     can.as_mut()

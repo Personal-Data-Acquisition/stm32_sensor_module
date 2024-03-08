@@ -16,7 +16,8 @@ async fn main(spawner: Spawner) {
 
     let p = embassy_stm32::init(Default::default());
 
-    let mut can=init_can(p.CAN,p.PA11,p.PA12);
+    embassy_stm32::pac::AFIO.mapr().modify(|w| w.set_can1_remap(2));
+    let mut can=init_can(p.CAN,p.PB8,p.PB9);
 
     loop {
         send_can_message(&mut can, 0x40, b"Hello world this is a test of the canbus transmission system.").await;
