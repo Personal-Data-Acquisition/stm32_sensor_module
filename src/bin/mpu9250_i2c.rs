@@ -25,9 +25,9 @@ bind_interrupts!(struct Irqs {
     I2C2_ER => i2c::ErrorInterruptHandler<peripherals::I2C2>;
 });
 
-async fn send_reading(can: &mut Can<'_, CAN>, id: u8, label:[char;2], data:[f32;3]){
-    let mut bytes: [u8; 8] = [label[0] as u8,label[1] as u8, 0,0,0,0,0,0]; // Initialize a fixed-size array to hold the bytes
-    let mut index = 2;
+async fn send_reading(can: &mut Can<'_, CAN>, id: u8, label:char, data:[f32;3]){
+    let mut bytes: [u8; 7] = [label as u8, 0,0,0,0,0,0]; // Initialize a fixed-size array to hold the bytes
+    let mut index = 1;
     for &f in data.iter() {
         // Convert f32 to f16
         let f16_value = f16::from_f32(f);
@@ -88,9 +88,9 @@ async fn main(_spawner: Spawner) {
                 println!("GYRO{:?}", all.gyro);
                 println!("TEMP{:?}\n", all.temp);
 
-                send_reading(can,0x60,['a','c'],all.accel).await;
-                send_reading(can,0x60,['m','g'],all.mag).await;
-                send_reading(can,0x60,['g','y'],all.gyro).await;
+                send_reading(can,0x60,'a',all.accel).await;
+                send_reading(can,0x60,'m',all.mag).await;
+                send_reading(can,0x60,'g',all.gyro).await;
 
                 Timer::after_millis(1).await;
 
