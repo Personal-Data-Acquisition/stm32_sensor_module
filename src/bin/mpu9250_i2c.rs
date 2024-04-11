@@ -76,6 +76,7 @@ async fn main(_spawner: Spawner) {
 
     let mpu = Mpu9250::marg_default(i2c, &mut Delay);
 
+    let can_id = init_sensor_module_can(&mut can,"ACCELEROMETER","ACC_MPU9250", p.ADC1, p.ADC2, p.PA0, p.PA1).await;
 
     match mpu {
         Ok(mut mpu) => {
@@ -88,9 +89,9 @@ async fn main(_spawner: Spawner) {
                 println!("GYRO{:?}", all.gyro);
                 println!("TEMP{:?}\n", all.temp);
 
-                send_reading(can,0x60,'a',all.accel).await;
-                send_reading(can,0x60,'m',all.mag).await;
-                send_reading(can,0x60,'g',all.gyro).await;
+                send_reading(can,can_id,'a',all.accel).await;
+                send_reading(can,can_id,'m',all.mag).await;
+                send_reading(can,can_id,'g',all.gyro).await;
 
                 Timer::after_millis(1).await;
 

@@ -86,11 +86,11 @@ async fn main(_spawner: Spawner) {
         },
     }
 
-    let ID = init_sensor_module_can(&mut can,"GNSS7","GPS", p.ADC1, p.ADC2, p.PA0, p.PA1).await;
+    let can_id = init_sensor_module_can(&mut can,"GNSS7","GPS_GNSS7", p.ADC1, p.ADC2, p.PA0, p.PA1).await;
 
 
     loop{
-        check_gnss(ID, &mut i2c, &mut can).await.unwrap();
+        check_gnss(can_id, &mut i2c, &mut can).await.unwrap();
         Timer::after_millis(250).await;
     }
 }

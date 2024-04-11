@@ -37,7 +37,7 @@ async fn main(_spawner: Spawner) {
     //chip select
     let mut cs = Output::new(p.PB12, Level::High, Speed::VeryHigh);
 
-    let ID = init_sensor_module_can(&mut can,"PROBE","THERMAL_PROBE", p.ADC1, p.ADC2, p.PA0, p.PA1).await;
+    let can_id = init_sensor_module_can(&mut can,"PROBE","THERMAL_PROBE", p.ADC1, p.ADC2, p.PA0, p.PA1).await;
 
     loop {
         //clear
@@ -55,7 +55,7 @@ async fn main(_spawner: Spawner) {
         // Process the received data
         let temperature_raw = ((buf[0] as u16) << 8) | buf[1] as u16;
         let temperature_celsius = (temperature_raw >> 3) as f32 * 0.25;
-        send_can_message(can,ID,&temperature_celsius.to_le_bytes()).await;
+        send_can_message(can,can_id,&temperature_celsius.to_le_bytes()).await;
         Timer::after_millis(200).await;
 
     }
