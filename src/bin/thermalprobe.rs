@@ -21,7 +21,7 @@ use canlib::*;
 async fn main(_spawner: Spawner) {
     let p = embassy_stm32::init(Default::default());
 
-    let can=init_can(p.CAN,p.PA11,p.PA12);
+    let mut can=init_can(p.CAN,p.PA11,p.PA12);
 
     info!("Hello World!");
 
@@ -36,6 +36,9 @@ async fn main(_spawner: Spawner) {
     let mut spi = Spi::new(p.SPI2, p.PB13, p.PB15, p.PB14, NoDma, NoDma, spi_config);
     //chip select
     let mut cs = Output::new(p.PB12, Level::High, Speed::VeryHigh);
+
+    let can_id = init_sensor_module_can(&mut can,"PROBE","THERMAL_PROBE", p.ADC1, p.ADC2, p.PA0, p.PA1).await;
+
     loop {
         //clear
         cs.set_high();
@@ -52,10 +55,7 @@ async fn main(_spawner: Spawner) {
         // Process the received data
         let temperature_raw = ((buf[0] as u16) << 8) | buf[1] as u16;
         let temperature_celsius = (temperature_raw >> 3) as f32 * 0.25;
-        info!("Raw {=[u8]:x}", buf);
-        info!("Temperature: {} °C", temperature_celsius);
-        let af = arrform!(64, "{:.2}C", temperature_celsius);
-        send_can_message(can,0x40,af.as_bytes()).await;
+        send_can_message(can,can_id,&temperature_celsius.to_le_bytes()).await;
         Timer::after_millis(200).await;
 
     }
