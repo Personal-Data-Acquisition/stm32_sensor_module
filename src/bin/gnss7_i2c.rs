@@ -26,7 +26,7 @@ bind_interrupts!(struct Irqs {
     I2C2_ER => i2c::ErrorInterruptHandler<peripherals::I2C2>;
 });
 
-async fn check_gnss(ID:u8, i2c: &mut I2c<'_, I2C2>, can: &mut Can<'_, CAN>,) -> Result<(), Error> {
+async fn check_gnss(id:u8, i2c: &mut I2c<'_, I2C2>, can: &mut Can<'_, CAN>,) -> Result<(), Error> {
     // 0xFD (MSB) and 0xFE (LSB) are the registers that contain number of bytes available
     // 0xFF contains gps data stream.
     let mut avail=[0u8;2];
@@ -45,7 +45,7 @@ async fn check_gnss(ID:u8, i2c: &mut I2c<'_, I2C2>, can: &mut Can<'_, CAN>,) -> 
         //print as string
         let txt = core::str::from_utf8(slice).unwrap();
         //let txt = unsafe { core::str::from_utf8_unchecked(slice) };
-        send_can_message(can, ID, &slice).await;
+        send_can_message(can, id, &slice).await;
         println!("{}",txt);
 
     }
@@ -86,10 +86,12 @@ async fn main(_spawner: Spawner) {
         },
     }
 
-    let can_id = init_sensor_module_can(&mut can,"GNSS7","GPS_GNSS7", p.ADC1, p.ADC2, p.PA0, p.PA1).await;
+    let rng = init_rng(p.ADC1, p.ADC2, p.PA0, p.PA1).await;
 
+    let can_id = init_sensor_module_can(&mut can,"GNSS7","GPS_GNSS7", &rng).await;
 
     loop{
+        sensor_check_inbox(&mut can).await;
         check_gnss(can_id, &mut i2c, &mut can).await.unwrap();
         Timer::after_millis(250).await;
     }

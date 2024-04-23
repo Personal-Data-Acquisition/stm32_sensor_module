@@ -23,9 +23,12 @@ async fn main(spawner: Spawner) {
     //let x =can.read().await;
     //println!("{}",x.unwrap().frame.data());
 
-    let ID = init_sensor_module_can(&mut can,"TEST","TEST", p.ADC1, p.ADC2, p.PA0, p.PA1).await;
+    let rng = init_rng(p.ADC1, p.ADC2, p.PA0, p.PA1).await;
+
+    let ID = init_sensor_module_can(&mut can,"TEST","TEST", &rng).await;
 
     loop {
+        sensor_check_inbox(&mut can).await;
         send_can_message(&mut can, ID, b"Hello world this is a test of the canbus transmission system.").await;
     }
 }

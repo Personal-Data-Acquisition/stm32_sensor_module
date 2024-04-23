@@ -37,7 +37,9 @@ async fn main(_spawner: Spawner) {
     //chip select
     let mut cs = Output::new(p.PB12, Level::High, Speed::VeryHigh);
 
-    let can_id = init_sensor_module_can(&mut can,"PROBE","THERMAL_PROBE", p.ADC1, p.ADC2, p.PA0, p.PA1).await;
+    let rng = init_rng(p.ADC1, p.ADC2, p.PA0, p.PA1).await;
+
+    let can_id = init_sensor_module_can(&mut can,"PROBE","THERMAL_PROBE", &rng).await;
 
     loop {
         //clear
