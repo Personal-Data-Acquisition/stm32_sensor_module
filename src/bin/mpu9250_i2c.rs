@@ -76,12 +76,15 @@ async fn main(_spawner: Spawner) {
 
     let mpu = Mpu9250::marg_default(i2c, &mut Delay);
 
-    let can_id = init_sensor_module_can(&mut can,"ACCELEROMETER","ACC_MPU9250", p.ADC1, p.ADC2, p.PA0, p.PA1).await;
+    let rng = init_rng(p.ADC1, p.ADC2, p.PA0, p.PA1).await;
+
+    let can_id = init_sensor_module_can(&mut can,"ACCELEROMETER","ACC_MPU9250", &rng).await;
 
     match mpu {
         Ok(mut mpu) => {
             info!("mpu initialized");
             loop {
+                sensor_check_inbox(&mut can).await;
                 // to get all supported measurements:
                 let all: MargMeasurements<[f32; 3]> = mpu.all().unwrap();
                 println!("ACCEL{:?}", all.accel);

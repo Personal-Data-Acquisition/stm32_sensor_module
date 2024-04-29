@@ -18,6 +18,10 @@ CAN1_SCE => SceInterruptHandler<CAN>;
 USB_HP_CAN1_TX => TxInterruptHandler<CAN>;
 });
 
+unsafe extern "C" fn HardFault() {
+    cortex_m::peripheral::SCB::sys_reset();
+}
+
 //#[embassy_executor::task]
 pub async fn send_can_message(can: &mut Can<'_, CAN>, id: u8, data: &[u8]) {
     let std_id = unwrap!(StandardId::new(id as _));
@@ -41,7 +45,10 @@ pub fn init_can<R: RxPin<CAN>, T: TxPin<CAN>>(can: CAN,rx_pin: R, tx_pin: T) -> 
     let can: &'static mut Can<'static, CAN> = static_cell::make_static!(Can::new(can, rx_pin, tx_pin, Irqs));
     can.as_mut()
         .modify_filters()
-        .enable_bank(0, Fifo::Fifo0, Mask32::accept_all());
+        //0xfe: server config id
+        //0x7ff: mask for match all
+        .enable_bank(0, Fifo::Fifo0, Mask32::frames_with_std_id(
+            unwrap!(StandardId::new(0xfe as _)),unwrap!(StandardId::new(0x7ff as _))));
     can.set_bitrate(1_000_000);
     can.as_mut()
         .modify_config()
@@ -52,14 +59,18 @@ pub fn init_can<R: RxPin<CAN>, T: TxPin<CAN>>(can: CAN,rx_pin: R, tx_pin: T) -> 
     return can;
 }
 
-pub async fn init_sensor_module_can<P1: AdcPin<ADC1>, P2: AdcPin<ADC2>>
-        (can: &mut Can<'_, CAN>,ID:&str,TYPE:&str,adc1: ADC1,adc2: ADC2,pin1:P1,pin2:P2)->u8{
+pub async fn init_rng<P1: AdcPin<ADC1>, P2: AdcPin<ADC2>>(adc1: ADC1, adc2: ADC2, pin1:P1, pin2:P2) -> u32 {
     let mut adc1 = Adc::new(adc1, &mut Delay);
     let mut adc2 = Adc::new(adc2, &mut Delay);
     let mut pin1 = pin1;
     let mut pin2 = pin2;
-    //get random source from adc
     let rng:u32 = (adc1.read(&mut pin1).await)as u32 * (adc2.read(&mut pin2).await) as u32;
+    return rng
+}
+
+pub async fn init_sensor_module_can(can: &mut Can<'_, CAN>,ID:&str,TYPE:&str,rng:&u32)->u8{
+
+    //get random source from adc
 
     //stagger init based on rng
     Timer::after_millis((rng & 0xff) as u64).await;
@@ -69,15 +80,11 @@ pub async fn init_sensor_module_can<P1: AdcPin<ADC1>, P2: AdcPin<ADC2>>
     //send random rumber as id
     send_can_message(can,0xff,af.as_bytes()).await;
     loop {
-        let msg=can.read().await.unwrap().frame;
-        //if fot init service, skip
-        let id = match msg.id() {
-            Id::Standard(id)=>id.as_raw(),
-            _ =>0
+        let msg = if let Some(f) = sensor_check_inbox(can).await {
+            f
+        } else {
+            continue;
         };
-        if id!=0xfe{
-            continue
-        }
         //not talking to me
         if af.as_str().as_bytes()!=(msg.data().unwrap().deref()) {
             continue
@@ -88,7 +95,7 @@ pub async fn init_sensor_module_can<P1: AdcPin<ADC1>, P2: AdcPin<ADC2>>
         let id=msg.data().unwrap()[0];
 
         let cfg = arrform!(64, "ID:{},TYPE:{}\n", ID, TYPE);
-        println!("sending {}",cfg.as_str());
+        println!("sending \"{}\"",cfg.as_str());
         send_can_message(can, id, cfg.as_bytes()).await;
 
         //send ok
@@ -96,6 +103,22 @@ pub async fn init_sensor_module_can<P1: AdcPin<ADC1>, P2: AdcPin<ADC2>>
 
         return id
     }
+}
+
+pub async fn sensor_check_inbox(can: &mut Can<'_, CAN>) -> Option<Frame> {
+    while let Ok(frame)=can.try_read(){
+        println!("recieved from server {}",frame.frame.data());
+        match frame.frame.data().unwrap()[0] {
+            5 => {
+                info!("RESETTING");
+                //give message time to flush
+                Timer::after_millis(100).await;
+                unsafe{HardFault()}
+            }
+            _ => {return Some(frame.frame.clone())}
+        }
+    }
+    return None;
 }
 
 
