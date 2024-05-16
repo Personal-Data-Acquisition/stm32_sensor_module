@@ -99,7 +99,7 @@ pub async fn init_sensor_module_can(can: &mut Can<'_, CAN>,ID:&str,TYPE:&str,rng
         send_can_message(can, id, cfg.as_bytes()).await;
 
         //send ok
-        send_can_message(can, id, &[0]).await;
+        //send_can_message(can, id, &[0]).await;
 
         return id
     }

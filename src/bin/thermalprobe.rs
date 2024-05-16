@@ -21,7 +21,8 @@ use canlib::*;
 async fn main(_spawner: Spawner) {
     let p = embassy_stm32::init(Default::default());
 
-    let mut can=init_can(p.CAN,p.PA11,p.PA12);
+    embassy_stm32::pac::AFIO.mapr().modify(|w| w.set_can1_remap(2));
+    let mut can=init_can(p.CAN,p.PB8,p.PB9);
 
     info!("Hello World!");
 
@@ -57,6 +58,7 @@ async fn main(_spawner: Spawner) {
         // Process the received data
         let temperature_raw = ((buf[0] as u16) << 8) | buf[1] as u16;
         let temperature_celsius = (temperature_raw >> 3) as f32 * 0.25;
+        sensor_check_inbox(&mut can).await;
         send_can_message(can,can_id,&temperature_celsius.to_le_bytes()).await;
         Timer::after_millis(200).await;
 
