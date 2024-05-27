@@ -21,8 +21,8 @@ const ADDRESS: u8 = 0x68;
 const WHOAMI: u8 = 0x0F;
 
 bind_interrupts!(struct Irqs {
-    I2C2_EV => i2c::EventInterruptHandler<peripherals::I2C2>;
-    I2C2_ER => i2c::ErrorInterruptHandler<peripherals::I2C2>;
+    I2C1_EV => i2c::EventInterruptHandler<peripherals::I2C1>;
+    I2C1_ER => i2c::ErrorInterruptHandler<peripherals::I2C1>;
 });
 
 async fn send_reading(can: &mut Can<'_, CAN>, id: u8, label:char, data:[f32;3]){
@@ -47,9 +47,9 @@ async fn main(_spawner: Spawner) {
     let p = embassy_stm32::init(Default::default());
     //100k seems to be recommended
     let mut i2c = I2c::new(
-        p.I2C2,
-        p.PB10,
-        p.PB11,
+        p.I2C1,
+        p.PB6,
+        p.PB7,
         Irqs,
         NoDma,
         NoDma,
@@ -78,13 +78,16 @@ async fn main(_spawner: Spawner) {
 
     let rng = init_rng(p.ADC1, p.ADC2, p.PA0, p.PA1).await;
 
+
+    println!("waiting for initialization");
     let can_id = init_sensor_module_can(&mut can,"ACCELEROMETER","ACC_MPU9250", &rng).await;
+    println!("initialized");
 
     match mpu {
         Ok(mut mpu) => {
             info!("mpu initialized");
             loop {
-                sensor_check_inbox(&mut can).await;
+                sensor_check_inbox(can,can_id).await;
                 // to get all supported measurements:
                 let all: MargMeasurements<[f32; 3]> = mpu.all().unwrap();
                 println!("ACCEL{:?}", all.accel);
@@ -96,7 +99,7 @@ async fn main(_spawner: Spawner) {
                 send_reading(can,can_id,'m',all.mag).await;
                 send_reading(can,can_id,'g',all.gyro).await;
 
-                Timer::after_millis(1).await;
+                Timer::after_millis(100).await;
 
             }
         }
