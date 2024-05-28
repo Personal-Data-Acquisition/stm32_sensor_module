@@ -12,7 +12,7 @@ use embassy_stm32::time::Hertz;
 use embassy_stm32::{bind_interrupts, i2c, peripherals};
 use embassy_stm32::adc::Adc;
 use embassy_stm32::can::Can;
-use embassy_stm32::peripherals::{CAN, I2C2};
+use embassy_stm32::peripherals::{CAN, I2C1, I2C2};
 use embassy_time::{Delay, Instant, Timer};
 use {defmt_rtt as _, panic_probe as _};
 mod canlib;
@@ -22,11 +22,11 @@ const ADDRESS: u8 = 0x42;
 const WHOAMI: u8 = 0x0F;
 
 bind_interrupts!(struct Irqs {
-    I2C2_EV => i2c::EventInterruptHandler<peripherals::I2C2>;
-    I2C2_ER => i2c::ErrorInterruptHandler<peripherals::I2C2>;
+    I2C1_EV => i2c::EventInterruptHandler<peripherals::I2C1>;
+    I2C1_ER => i2c::ErrorInterruptHandler<peripherals::I2C1>;
 });
 
-async fn check_gnss(id:u8, i2c: &mut I2c<'_, I2C2>, can: &mut Can<'_, CAN>,) -> Result<(), Error> {
+async fn check_gnss(id:u8, i2c: &mut I2c<'_, I2C1>, can: &mut Can<'_, CAN>,) -> Result<(), Error> {
     // 0xFD (MSB) and 0xFE (LSB) are the registers that contain number of bytes available
     // 0xFF contains gps data stream.
     let mut avail=[0u8;2];
@@ -59,9 +59,9 @@ async fn main(_spawner: Spawner) {
     let p = embassy_stm32::init(Default::default());
     //115200 seems to be recommended
     let mut i2c = I2c::new(
-        p.I2C2,
-        p.PB10,
-        p.PB11,
+        p.I2C1,
+        p.PB6,
+        p.PB7,
         Irqs,
         NoDma,
         NoDma,
@@ -87,11 +87,11 @@ async fn main(_spawner: Spawner) {
     }
 
     let rng = init_rng(p.ADC1, p.ADC2, p.PA0, p.PA1).await;
-
+    println!("waiting for initialization");
     let can_id = init_sensor_module_can(&mut can,"GNSS7","GPS_GNSS7", &rng).await;
 
     loop{
-        sensor_check_inbox(&mut can).await;
+        sensor_check_inbox(&mut can, can_id).await;
         check_gnss(can_id, &mut i2c, &mut can).await.unwrap();
         Timer::after_millis(250).await;
     }

@@ -80,7 +80,7 @@ pub async fn init_sensor_module_can(can: &mut Can<'_, CAN>,ID:&str,TYPE:&str,rng
     //send random rumber as id
     send_can_message(can,0xff,af.as_bytes()).await;
     loop {
-        let msg = if let Some(f) = sensor_check_inbox(can).await {
+        let msg = if let Some(f) = sensor_check_inbox(can,0).await {
             f
         } else {
             continue;
@@ -105,7 +105,7 @@ pub async fn init_sensor_module_can(can: &mut Can<'_, CAN>,ID:&str,TYPE:&str,rng
     }
 }
 
-pub async fn sensor_check_inbox(can: &mut Can<'_, CAN>) -> Option<Frame> {
+pub async fn sensor_check_inbox(can: &mut Can<'_, CAN>,id: u8) -> Option<Frame> {
     while let Ok(frame)=can.try_read(){
         println!("recieved from server {}",frame.frame.data());
         match frame.frame.data().unwrap()[0] {
@@ -114,6 +114,13 @@ pub async fn sensor_check_inbox(can: &mut Can<'_, CAN>) -> Option<Frame> {
                 //give message time to flush
                 Timer::after_millis(100).await;
                 unsafe{HardFault()}
+            }
+            6 => {
+                info!("Keepalive");
+                //give message time to flush
+                send_can_message(can, id, &[6]).await;
+                continue;
+
             }
             _ => {return Some(frame.frame.clone())}
         }
